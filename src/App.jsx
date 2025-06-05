@@ -1,5 +1,7 @@
-import { useState } from 'react'
+
 import {Route,Routes} from 'react-router-dom'
+import CreateMemory from './pages/CreateMemory'
+import ViewMemory from './pages/ViewMemory'
 
 
 function App() {
@@ -8,7 +10,8 @@ function App() {
   return (
     <>
     <Routes>
-      <Route/>
+      <Route path = "/" element = {<CreateMemory/>} />
+      <Route path='memory/:shortId' element = {<ViewMemory/>} />
     </Routes>
     </>
   )
