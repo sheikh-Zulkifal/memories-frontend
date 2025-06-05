@@ -1,32 +1,37 @@
-import axios from "axios";
+import axios from "axios"; 
 
 const API = axios.create({
-  baseURL: "http://localhost:3000/api/memories", // Replace with your backend URL
+  baseURL: "http://localhost:3000/api/memories", // Base URL for your backend memories API
 });
 
-// Create a new memory
+// Create a new memory (POST /create)
 export const createMemory = (formData) => {
-  return API.post("/", formData);
+  return API.post("/create", formData);
 };
 
-// Get memory by shortId
+// Get all memories (GET /)
+export const getAllMemories = () => {
+  return API.get("/");
+};
+
+// Get memory by shortId (GET /:shortId)
 export const getMemory = (shortId) => {
   return API.get(`/memory/${shortId}`);
 };
 
-// Update an existing memory
+// Update an existing memory by id (PUT /update/:id)
 export const editMemory = (id, formData) => {
-  return API.put(`/memory/${id}`, formData);
+  return API.put(`/update/${id}`, formData);
 };
 
-// Verify password (you may still use this if needed elsewhere)
-export const verifyPassword = (shortId, password) => {
-  return API.post(`/memory/${shortId}/verify`, { password });
+// Verify password (optional, depending on backend implementation)
+export const verifyPassword = (id, password) => {
+  return API.post(`/verify/${id}`, { password });
 };
 
-// Delete a memory (requires memory ID and password)
+// Delete a memory by id with password (DELETE /:id)
 export const deleteMemory = (id, password) => {
-  return API.delete(`/memory/${id}`, {
-    data: { password }, // DELETE needs payload in `data`
+  return API.delete(`/${id}`, {
+    data: { password }, // DELETE requires payload in `data`
   });
 };

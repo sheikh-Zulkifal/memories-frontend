@@ -1,175 +1,139 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import {
-  getMemory,
-  editMemory,
- verifyPassword,
-  deleteMemory,
-} from "../api/memoryApi";
+import { getMemory, editMemory, deleteMemory } from "../api/memoryApi";
+import PasswordModal from "../comp/PasswordModal";
 
 const ViewMemory = () => {
   const { shortId } = useParams();
   const navigate = useNavigate();
 
   const [memory, setMemory] = useState(null);
-  const [editMode, setEditMode] = useState(false);
-  const [title, setTitle] = useState("");
-  const [newImages, setNewImages] = useState([]);
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [editSuccess, setEditSuccess] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [actionType, setActionType] = useState(null); // "edit" or "delete"
+
+  const [editTitle, setEditTitle] = useState("");
+  const [editImages, setEditImages] = useState([]);
 
   useEffect(() => {
+    const fetchMemory = async () => {
+      try {
+        setLoading(true);
+        const response = await getMemory(shortId);
+        setMemory(response.data);
+        setEditTitle(response.data.title);
+        setLoading(false);
+      } catch (err) {
+        setError("Failed to load memory");
+        setLoading(false);
+      }
+    };
+
     fetchMemory();
   }, [shortId]);
 
-  const fetchMemory = async () => {
+  const handleOpenModal = (type) => {
+    setActionType(type);
+    setShowPasswordModal(true);
+  };
+
+  const handlePasswordSubmit = async (password) => {
     try {
-      const res = await getMemory(shortId);
-      setMemory(res.data);
-      setTitle(res.data.title);
+      if (actionType === "delete") {
+        await deleteMemory(memory._id, password);
+        alert("Memory deleted successfully");
+        navigate("/"); // redirect home after deletion
+      } else if (actionType === "edit") {
+        const formData = new FormData();
+        formData.append("title", editTitle);
+        if (editImages.length > 0) {
+          editImages.forEach((file) => formData.append("images", file));
+        }
+        formData.append("password", password);
+
+        const response = await editMemory(memory._id, formData);
+        setMemory(response.data.memory);
+        alert("Memory updated successfully");
+      }
     } catch (err) {
-      console.error(err);
-      setError("Memory not found");
+      alert("Password incorrect or action failed");
+    } finally {
+      setShowPasswordModal(false);
+      setActionType(null);
+      setEditImages([]);
     }
   };
 
-  const handleImageChange = (e) => {
-    setNewImages([...e.target.files]);
-  };
-
-  const handleEdit = async (e) => {
-    e.preventDefault();
-    if (!password) return setError("Password is required to edit.");
-
-    const formData = new FormData();
-    formData.append("title", title);
-    formData.append("password", password);
-    newImages.forEach((file) => formData.append("images", file));
-
-    try {
-      const res = await editMemory(memory._id, formData);
-      setEditMode(false);
-      setNewImages([]);
-      setEditSuccess(true);
-      fetchMemory(); // refresh
-    } catch (err) {
-      setError(err.response?.data?.message || "Failed to edit");
-    }
-  };
-
-  const handleDelete = async () => {
-    const confirmPassword = prompt("Enter password to delete:");
-    if (!confirmPassword) return;
-
-    try {
-      await deleteMemory(memory._id, confirmPassword);
-      alert("Memory deleted.");
-      navigate("/");
-    } catch (err) {
-      alert(err.response?.data?.message || "Failed to delete");
-    }
-  };
-
-  if (!memory) {
-    return (
-      <div className="min-h-screen flex justify-center items-center bg-gray-900 text-white">
-        <p>Loading memory...</p>
-      </div>
-    );
-  }
+  if (loading) return <p>Loading...</p>;
+  if (error) return <p className="text-red-500">{error}</p>;
+  if (!memory) return <p>Memory not found</p>;
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-6">
-      <div className="max-w-4xl mx-auto bg-gray-800 p-6 rounded-lg">
-        <h2 className="text-2xl font-bold mb-2">{memory.title}</h2>
-        <p className="mb-4 text-sm text-gray-400">
-          Views: {memory.viewCount}
-        </p>
+    <div className="max-w-3xl mx-auto p-4">
+      <h1 className="text-3xl font-bold mb-4">{memory.title}</h1>
+      <p className="mb-2">Views: {memory.viewCount}</p>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
-          {memory.images.map((img, idx) => (
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        {memory.images && memory.images.length > 0 ? (
+          memory.images.map((img, i) => (
             <img
-              key={idx}
-              src={`http://localhost:5000/${img}`}
-              alt="memory"
-              className="w-full h-40 object-cover rounded"
+              key={i}
+              src={img.startsWith("http") ? img : `/${img}`}
+              alt={`Memory image ${i + 1}`}
+              className="w-full h-48 object-cover rounded"
             />
-          ))}
-        </div>
-
-        {!editMode ? (
-          <>
-            <button
-              className="bg-yellow-500 hover:bg-yellow-600 px-4 py-2 rounded mr-2"
-              onClick={() => setEditMode(true)}
-            >
-              Edit Memory
-            </button>
-            <button
-              className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded"
-              onClick={handleDelete}
-            >
-              Delete Memory
-            </button>
-          </>
+          ))
         ) : (
-          <form onSubmit={handleEdit} className="space-y-4 mt-4">
-            <h3 className="text-lg font-semibold">Edit Memory</h3>
-
-            <div>
-              <label>Title</label>
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                className="w-full p-2 mt-1 bg-gray-700 rounded"
-              />
-            </div>
-
-            <div>
-              <label>New Images (optional)</label>
-              <input
-                type="file"
-                multiple
-                onChange={handleImageChange}
-                className="w-full mt-1"
-              />
-            </div>
-
-            <div>
-              <label>Password</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full p-2 mt-1 bg-gray-700 rounded"
-              />
-            </div>
-
-            <div className="flex gap-2">
-              <button
-                type="submit"
-                className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded"
-              >
-                Save Changes
-              </button>
-              <button
-                type="button"
-                onClick={() => setEditMode(false)}
-                className="bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded"
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
+          <p>No images available</p>
         )}
-
-        {editSuccess && (
-          <p className="text-green-400 mt-3">Memory updated successfully.</p>
-        )}
-        {error && <p className="text-red-400 mt-3">{error}</p>}
       </div>
+
+      {/* Edit Section */}
+      <div className="mb-4">
+        <label className="block mb-1 font-semibold">Edit Title</label>
+        <input
+          type="text"
+          value={editTitle}
+          onChange={(e) => setEditTitle(e.target.value)}
+          className="border p-2 rounded w-full mb-2"
+        />
+
+        <label className="block mb-1 font-semibold">Add Images</label>
+        <input
+          type="file"
+          multiple
+          accept="image/*"
+          onChange={(e) => setEditImages(Array.from(e.target.files))}
+          className="mb-2"
+        />
+      </div>
+
+      <div className="flex space-x-4">
+        <button
+          onClick={() => handleOpenModal("edit")}
+          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+        >
+          Edit Memory
+        </button>
+
+        <button
+          onClick={() => handleOpenModal("delete")}
+          className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+        >
+          Delete Memory
+        </button>
+      </div>
+
+      {/* Password Modal */}
+      {showPasswordModal && (
+        <PasswordModal
+          onClose={() => setShowPasswordModal(false)}
+          onSubmit={handlePasswordSubmit}
+          action={actionType}
+        />
+      )}
     </div>
   );
 };
