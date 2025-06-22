@@ -80,7 +80,14 @@ const ViewMemory = () => {
           memory.images.map((img, i) => (
             <img
               key={i}
-              src={img.startsWith("http") ? img : `/${img}`}
+              src={
+                img.startsWith("http")
+                  ? img
+                  : `${import.meta.env.VITE_API_BASE_URL}/${img.replace(
+                      /\\/g,
+                      "/"
+                    )}`
+              }
               alt={`Memory image ${i + 1}`}
               className="w-full h-48 object-cover rounded"
             />
